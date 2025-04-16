@@ -6,7 +6,6 @@
   <title>Gym Streak Tracker</title>
   <!-- Firebase SDKs -->
   
-
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -93,6 +92,7 @@
 
     .gym-log-table th {
       background-color: #ffd54f;
+      color: #121212;
     }
 
     .gym-log-table td {
@@ -108,6 +108,7 @@
       font-size: 1.1rem;
       cursor: pointer;
       transition: background-color 0.3s ease;
+      margin-top: 2rem;
     }
 
     #logoutBtn:hover {
@@ -128,8 +129,8 @@
 
     <!-- Buttons to start/end gym session -->
     <div class="button-container">
-      <button id="inGymBtn" onclick="startGymSession()">In Gym</button>
-      <button id="outGymBtn" onclick="endGymSession()" disabled>Out Gym</button>
+      <button id="inGymBtn">In Gym</button>
+      <button id="outGymBtn" disabled>Out Gym</button>
     </div>
 
     <!-- Gym visit time log -->
@@ -167,131 +168,243 @@
     const user = JSON.parse(localStorage.getItem("user"));
     if (!user) {
       alert("User not logged in");
-      return;  // Prevent further execution if no user is logged in
+      // Don't use return statement outside of a function
+      // Instead, use an if/else structure
+    } else {
+      // Continue with the app initialization
+      initAppFunctions();
     }
-  
-    const workoutDropdown = document.getElementById("workoutDropdown");
-    const streakInfo = document.getElementById("streakInfo"); // Element to display streak info
-    const inButton = document.getElementById("inButton");
-    const outButton = document.getElementById("outButton");
-  
+    
+    // Variables for tracking gym session
     let isGymSessionActive = false;
-  
-    // Load today's workouts and streak info
-    (async () => {
-      const today = new Date().toLocaleString('en-us', { weekday: 'long' }).toLowerCase();
-      const snapshot = await get(ref(db, 'users/' + user.username + '/workoutPlan/' + today));
-      if (snapshot.exists()) {
-        snapshot.val().workouts.forEach(workout => {
-          const option = document.createElement("option");
-          option.value = workout;
-          option.textContent = workout;
-          workoutDropdown.appendChild(option);
-        });
+    let startTime = null;
+    let timerInterval = null;
+    
+    // Function to initialize the app - renamed to avoid conflict with Firebase's initializeApp
+    function initAppFunctions() {
+      const streakInfo = document.getElementById("streakInfo");
+      const inGymBtn = document.getElementById("inGymBtn");
+      const outGymBtn = document.getElementById("outGymBtn");
+      const logoutBtn = document.getElementById("logoutBtn");
+      
+      // Add event listeners to the buttons
+      inGymBtn.addEventListener("click", startGymSession);
+      outGymBtn.addEventListener("click", endGymSession);
+      logoutBtn.addEventListener("click", logout);
+      
+      // Load streak info
+      loadStreakInfo();
+      
+      // Load gym history
+      loadGymHistory();
+    }
+    
+    // Function to load streak info from Firebase
+    async function loadStreakInfo() {
+      if (!user) return;
+      
+      const streakInfo = document.getElementById("streakInfo");
+      const streakRef = ref(db, 'users/' + user.username + '/streak');
+      
+      try {
+        const snapshot = await get(streakRef);
+        if (snapshot.exists()) {
+          const streakData = snapshot.val();
+          streakInfo.textContent = `🔥 Current Streak: ${streakData.streak} day(s)`;
+        } else {
+          streakInfo.textContent = `🔥 Current Streak: 0 day(s)`;
+        }
+      } catch (error) {
+        console.error("Error loading streak info:", error);
+        streakInfo.textContent = "Error loading streak info";
       }
-  
-      // Load streak info from Firebase
-      const streakSnapshot = await get(ref(db, 'users/' + user.username + '/streak'));
-      if (streakSnapshot.exists()) {
-        const streakData = streakSnapshot.val();
-        streakInfo.textContent = `🔥 Current Streak: ${streakData.streak} day(s)`;
-      } else {
-        streakInfo.textContent = `🔥 Current Streak: 0 day(s)`;
+    }
+    
+    // Function to load gym history
+    async function loadGymHistory() {
+      if (!user) return;
+      
+      const gymLogBody = document.getElementById("gymLogBody");
+      const gymSessionsRef = ref(db, 'users/' + user.username + '/gymSessions');
+      
+      try {
+        const snapshot = await get(gymSessionsRef);
+        if (snapshot.exists()) {
+          const sessions = snapshot.val();
+          
+          // Clear existing table rows
+          gymLogBody.innerHTML = "";
+          
+          // Add gym sessions to table
+          Object.entries(sessions).forEach(([key, session]) => {
+            const row = document.createElement("tr");
+            
+            const dateCell = document.createElement("td");
+            dateCell.textContent = session.date;
+            
+            const timeCell = document.createElement("td");
+            timeCell.textContent = session.duration;
+            
+            row.appendChild(dateCell);
+            row.appendChild(timeCell);
+            gymLogBody.appendChild(row);
+          });
+        }
+      } catch (error) {
+        console.error("Error loading gym history:", error);
       }
-    })();
-  
-    // Log workout and update streak
-    document.getElementById("workoutLogForm").addEventListener("submit", async function (event) {
-      event.preventDefault();
-  
-      if (!isGymSessionActive) {
-        alert("Please mark 'In' to start your gym session.");
+    }
+    
+    // Function to update the timer display
+    function updateTimer() {
+      if (!startTime) return;
+      
+      const timerElement = document.getElementById("timer");
+      const currentTime = new Date();
+      const elapsedTime = Math.floor((currentTime - startTime) / 1000);
+      
+      const minutes = Math.floor(elapsedTime / 60);
+      const seconds = elapsedTime % 60;
+      
+      timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+    
+    // Function to start the gym session
+    function startGymSession() {
+      if (isGymSessionActive) {
+        alert("You are already in a gym session!");
         return;
       }
-  
-      const loggedWorkout = {
-        workoutType: workoutDropdown.value,
-        reps: document.getElementById("reps").value,
-        sets: document.getElementById("sets").value,
-        maxPR: document.getElementById("maxPR").value,
-        date: new Date().toLocaleDateString(),
-        time: new Date().toLocaleTimeString() // Store time of workout
-      };
-  
-      const userRef = ref(db, 'users/' + user.username);
-      const snapshot = await get(userRef);
-      const data = snapshot.val();
-  
-      const workoutHistory = data.workoutHistory || [];
-      workoutHistory.push(loggedWorkout);
-  
-      // Update streak logic
-      const today = new Date().toLocaleDateString();
-      const lastWorkoutDate = data.lastWorkoutDate;
-      let streak = data.streak || 0;
-  
-      // Check if the workout is on the next day
-      if (lastWorkoutDate) {
-        const lastWorkoutDateObj = new Date(lastWorkoutDate);
-        const currentDateObj = new Date(today);
-        const diffDays = Math.floor((currentDateObj - lastWorkoutDateObj) / (1000 * 60 * 60 * 24));
-        
-        if (diffDays === 1) {
-          streak++;  // Increment streak if workout is on the next day
-        } else if (diffDays > 1) {
-          streak = 1;  // Reset streak if missed days (excluding rest days)
-        }
-      } else {
-        streak = 1;  // If no previous workout, start a new streak
-      }
-  
-      // Update user data with new streak and workout history
-      update(userRef, {
-        workoutHistory,
-        lastWorkoutDate: today,
-        streak
-      });
-  
-      // Update streak info in Firebase
-      const streakRef = ref(db, 'users/' + user.username + '/streak');
-      update(streakRef, { streak });
-  
-      alert("Workout logged and streak updated!");
-      document.getElementById("workoutLogForm").reset();
-  
-      // Update streak display on UI
-      streakInfo.textContent = `🔥 Current Streak: ${streak} day(s)`;
-    });
-  
-    // Define the startGymSession function
-    function startGymSession() {
+      
       isGymSessionActive = true;
-      alert("You are now marked as 'In' for the gym.");
-    }
-  
-    // Mark as "In" for gym session
-    inButton.addEventListener("click", startGymSession);
-  
-    // Mark as "Out" for gym session
-    outButton.addEventListener("click", async () => {
-      if (isGymSessionActive) {
-        isGymSessionActive = false;
-        alert("You are now marked as 'Out' of the gym.");
-  
-        // Save the gym session status to Firebase
-        const sessionRef = ref(db, 'users/' + user.username + '/gymSession');
-        await set(sessionRef, { status: "Out", timestamp: new Date().toLocaleString() });
-  
-        // Log the session end time in the table
-        const sessionEndTime = new Date().toLocaleTimeString();
-        document.getElementById("sessionEndTime").textContent = `Session ended at: ${sessionEndTime}`;
-      } else {
-        alert("You are already marked as 'Out'.");
+      startTime = new Date();
+      
+      // Update UI
+      document.getElementById("inGymBtn").disabled = true;
+      document.getElementById("outGymBtn").disabled = false;
+      document.getElementById("gymTimeLog").textContent = `Session started at: ${startTime.toLocaleTimeString()}`;
+      
+      // Start timer
+      timerInterval = setInterval(updateTimer, 1000);
+      
+      // Save session start in Firebase
+      if (user) {
+        const sessionRef = ref(db, 'users/' + user.username + '/currentSession');
+        set(sessionRef, { 
+          startTime: startTime.toISOString(),
+          status: "In"
+        });
       }
-    });
+    }
+    
+    // Function to end the gym session
+    async function endGymSession() {
+      if (!isGymSessionActive) {
+        alert("No active gym session!");
+        return;
+      }
+      
+      isGymSessionActive = false;
+      const endTime = new Date();
+      clearInterval(timerInterval);
+      
+      // Calculate duration
+      const durationInMinutes = Math.floor((endTime - startTime) / (1000 * 60));
+      
+      // Update UI
+      document.getElementById("inGymBtn").disabled = false;
+      document.getElementById("outGymBtn").disabled = true;
+      document.getElementById("gymTimeLog").textContent += `\nSession ended at: ${endTime.toLocaleTimeString()}\nTotal duration: ${durationInMinutes} minutes`;
+      
+      if (user) {
+        // Save completed session to Firebase
+        const dateStr = endTime.toLocaleDateString();
+        const newSessionRef = ref(db, 'users/' + user.username + '/gymSessions/' + Date.now());
+        
+        await set(newSessionRef, {
+          date: dateStr,
+          startTime: startTime.toLocaleTimeString(),
+          endTime: endTime.toLocaleTimeString(),
+          duration: durationInMinutes
+        });
+        
+        // Clear current session
+        const currentSessionRef = ref(db, 'users/' + user.username + '/currentSession');
+        set(currentSessionRef, null);
+        
+        // Update streak
+        updateStreak(dateStr);
+        
+        // Reload gym history
+        loadGymHistory();
+      }
+    }
+    
+    // Function to update streak
+    async function updateStreak(dateStr) {
+      if (!user) return;
+      
+      const streakRef = ref(db, 'users/' + user.username + '/streak');
+      
+      try {
+        const snapshot = await get(streakRef);
+        let streak = 0;
+        let lastWorkoutDate = null;
+        
+        if (snapshot.exists()) {
+          const streakData = snapshot.val();
+          streak = streakData.streak || 0;
+          lastWorkoutDate = streakData.lastWorkoutDate;
+        }
+        
+        if (lastWorkoutDate) {
+          const lastDateObj = new Date(lastWorkoutDate);
+          const currentDateObj = new Date(dateStr);
+          
+          // Reset hours, minutes, seconds to get pure date comparison
+          lastDateObj.setHours(0, 0, 0, 0);
+          currentDateObj.setHours(0, 0, 0, 0);
+          
+          const diffTime = currentDateObj - lastDateObj;
+          const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+          
+          if (diffDays === 0) {
+            // Same day, no streak change
+          } else if (diffDays === 1) {
+            // Next day, increase streak
+            streak++;
+          } else {
+            // More than one day passed, reset streak
+            streak = 1;
+          }
+        } else {
+          // First workout, start streak
+          streak = 1;
+        }
+        
+        // Update streak in Firebase
+        await set(streakRef, {
+          streak: streak,
+          lastWorkoutDate: dateStr
+        });
+        
+        // Update UI
+        document.getElementById("streakInfo").textContent = `🔥 Current Streak: ${streak} day(s)`;
+        
+      } catch (error) {
+        console.error("Error updating streak:", error);
+      }
+    }
+    
+    // Function to logout
+    function logout() {
+      localStorage.removeItem("user");
+      window.location.href = "login.html";
+    }
+    
+    // Export functions to global scope for HTML onclick attributes
+    window.startGymSession = startGymSession;
+    window.endGymSession = endGymSession;
   </script>
-  
-  
-
 </body>
 </html>
