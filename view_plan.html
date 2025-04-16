@@ -17,7 +17,7 @@
       padding: 1rem;
       box-sizing: border-box;
     }
-
+    
     .auth-container {
       background: #1e1e1e;
       padding: 2rem;
@@ -28,29 +28,29 @@
       overflow-y: auto;
       max-height: 90vh;
     }
-
+    
     h2 {
       text-align: center;
       margin-bottom: 1.5rem;
       color: #ffd54f;
     }
-
+    
     h3 {
       margin-top: 1rem;
       margin-bottom: 0.5rem;
       color: #90caf9;
     }
-
+    
     p {
       margin: 0.2rem 0;
     }
-
+    
     .day-plan {
       margin-bottom: 1rem;
       padding-bottom: 0.5rem;
       border-bottom: 1px solid #444;
     }
-
+    
     button {
       display: block;
       width: 100%;
@@ -64,24 +64,39 @@
       cursor: pointer;
       transition: background 0.3s ease;
     }
-
+    
     button:hover {
       background: #ffca28;
     }
-
+    
+    .loader {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #ffd54f;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      animation: spin 2s linear infinite;
+      margin: 20px auto;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
     @media screen and (max-width: 480px) {
       .auth-container {
         padding: 1.5rem 1rem;
       }
-
+      
       h2 {
         font-size: 1.3rem;
       }
-
+      
       h3 {
         font-size: 1.1rem;
       }
-
+      
       button {
         font-size: 0.9rem;
         padding: 0.6rem;
@@ -93,43 +108,83 @@
   <div class="auth-container">
     <h2>🏋 Your Weekly Workout Plan</h2>
     <div id="weeklyPlanContainer">
+      <!-- Loading spinner -->
+      <div class="loader"></div>
       <!-- The weekly plan will be displayed here -->
     </div>
     <button id="modifyPlanBtn">🛠 Modify Your Plan</button>
     <button id="goToWorkoutLogBtn">📒 Go to Workout Log</button>
   </div>
 
-  <script>
-    document.addEventListener("DOMContentLoaded", function () {
-      const weeklyPlan = JSON.parse(localStorage.getItem("weeklyWorkoutPlan"));
+  <script type="module">
+    // Import Firebase modules
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    
+    // Your Firebase configuration
+    const firebaseConfig = {
+      databaseURL: "https://gymdaily-3fb9e-default-rtdb.firebaseio.com"
+    };
+    
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    
+    document.addEventListener("DOMContentLoaded", async function() {
       const planContainer = document.getElementById("weeklyPlanContainer");
-
-      if (weeklyPlan) {
-        const daysOrder = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
-        daysOrder.forEach(day => {
-          if (weeklyPlan[day]) {
-            const dayPlan = weeklyPlan[day];
-            const dayElement = document.createElement("div");
-            dayElement.classList.add("day-plan");
-
-            dayElement.innerHTML = `
-              <h3>${day.charAt(0).toUpperCase() + day.slice(1)}</h3>
-              <p><strong>Title:</strong> ${dayPlan.title}</p>
-              <p><strong>Workouts:</strong> ${dayPlan.workouts.join(", ")}</p>
-            `;
-
-            planContainer.appendChild(dayElement);
-          }
-        });
-      } else {
-        planContainer.innerHTML = "<p>No workout plan found. Please create one first.</p>";
+      
+      // Get logged-in user from localStorage
+      const user = JSON.parse(localStorage.getItem("user"));
+      
+      if (!user) {
+        planContainer.innerHTML = "<p>Please log in to view your workout plan.</p>";
+        return;
       }
-
-      document.getElementById("modifyPlanBtn").addEventListener("click", function () {
+      
+      try {
+        // Reference to the user's workout plan in Firebase
+        const workoutPlanRef = ref(db, 'users/' + user.username + '/workoutPlan');
+        
+        // Get the workout plan data
+        const snapshot = await get(workoutPlanRef);
+        
+        if (snapshot.exists()) {
+          const weeklyPlan = snapshot.val();
+          
+          // Clear the loading spinner
+          planContainer.innerHTML = "";
+          
+          // Display the workout plan
+          const daysOrder = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+          daysOrder.forEach(day => {
+            if (weeklyPlan[day]) {
+              const dayPlan = weeklyPlan[day];
+              const dayElement = document.createElement("div");
+              dayElement.classList.add("day-plan");
+              
+              dayElement.innerHTML = `
+                <h3>${day.charAt(0).toUpperCase() + day.slice(1)}</h3>
+                <p><strong>Title:</strong> ${dayPlan.title}</p>
+                <p><strong>Workouts:</strong> ${dayPlan.workouts.join(", ")}</p>
+              `;
+              
+              planContainer.appendChild(dayElement);
+            }
+          });
+        } else {
+          planContainer.innerHTML = "<p>No workout plan found. Please create one first.</p>";
+        }
+      } catch (error) {
+        console.error("Error fetching workout plan:", error);
+        planContainer.innerHTML = "<p>Error loading workout plan. Please try again later.</p>";
+      }
+      
+      // Set up button event listeners
+      document.getElementById("modifyPlanBtn").addEventListener("click", function() {
         window.location.href = "workout_plan.html";
       });
-
-      document.getElementById("goToWorkoutLogBtn").addEventListener("click", function () {
+      
+      document.getElementById("goToWorkoutLogBtn").addEventListener("click", function() {
         window.location.href = "workout_log.html";
       });
     });
