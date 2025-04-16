@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scoreboard | FitFam</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #121212;
+      color: #f4f4f4;
+      margin: 0;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: #1e1e1e;
+      padding: 2rem;
+      border-radius: 10px;
+      box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+    }
+    
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    
+    h1 {
+      color: #ffd54f;
+      margin-bottom: 0.5rem;
+    }
+    
+    .subtitle {
+      color: #90caf9;
+      margin-bottom: 1.5rem;
+    }
+    
+    .scoreboard {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+    
+    .scoreboard th {
+      background-color: #333;
+      color: #ffd54f;
+      padding: 12px;
+      text-align: left;
+      position: sticky;
+      top: 0;
+    }
+    
+    .scoreboard tr {
+      border-bottom: 1px solid #444;
+      transition: background-color 0.2s;
+    }
+    
+    .scoreboard tr:hover {
+      background-color: #2a2a2a;
+    }
+    
+    .scoreboard td {
+      padding: 12px;
+    }
+    
+    .rank {
+      font-weight: bold;
+      text-align: center;
+      width: 60px;
+    }
+    
+    .first {
+      background: linear-gradient(to right, #FFD700, #FFA500);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      font-size: 1.2rem;
+    }
+    
+    .second {
+      background: linear-gradient(to right, #C0C0C0, #A9A9A9);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      font-size: 1.1rem;
+    }
+    
+    .third {
+      background: linear-gradient(to right, #CD7F32, #8B4513);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      font-size: 1.05rem;
+    }
+    
+    .username {
+      font-weight: bold;
+      color: #fff;
+    }
+    
+    .pr {
+      font-weight: bold;
+      color: #4caf50;
+    }
+    
+    .workout-type {
+      color: #90caf9;
+    }
+    
+    .streak {
+      font-weight: bold;
+      color: #ff9800;
+    }
+    
+    .loader {
+      border: 4px solid #333;
+      border-top: 4px solid #ffd54f;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 2s linear infinite;
+      margin: 40px auto;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .filters {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    select, button {
+      background: #333;
+      color: #fff;
+      border: 1px solid #555;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    
+    select:focus, button:focus {
+      outline: none;
+      border-color: #ffd54f;
+    }
+    
+    button {
+      background: #ffd54f;
+      color: #000;
+      border: none;
+      transition: background-color 0.3s;
+    }
+    
+    button:hover {
+      background: #ffca28;
+    }
+    
+    .no-data {
+      text-align: center;
+      padding: 2rem;
+      color: #888;
+    }
+    
+    .navigation {
+      margin-top: 2rem;
+      display: flex;
+      justify-content: space-between;
+    }
+    
+    @media screen and (max-width: 768px) {
+      .filters {
+        flex-direction: column;
+      }
+      
+      .scoreboard th, .scoreboard td {
+        padding: 8px;
+        font-size: 0.9rem;
+      }
+      
+      .container {
+        padding: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🏆 FitFam Scoreboard</h1>
+      <p class="subtitle">See how you stack up against other FitFam members!</p>
+    </header>
+    
+    <div class="filters">
+      <div class="filter-group">
+        <label for="sortBy">Sort By:</label>
+        <select id="sortBy">
+          <option value="streak">Highest Streak</option>
+          <option value="pr">Highest PR</option>
+        </select>
+      </div>
+      
+      <div class="filter-group">
+        <label for="workoutFilter">Filter Workout:</label>
+        <select id="workoutFilter">
+          <option value="all">All Workouts</option>
+          <!-- Workout options will be added dynamically -->
+        </select>
+        
+        <button id="applyFilters">Apply Filters</button>
+      </div>
+    </div>
+    
+    <div id="scoreboardContainer">
+      <div class="loader"></div>
+    </div>
+    
+    <div class="navigation">
+      <button id="backBtn">Back to Dashboard</button>
+      <button id="refreshBtn">Refresh Data</button>
+    </div>
+  </div>
+
+  <script type="module">
+    // Import Firebase modules
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    
+    // Firebase configuration
+    const firebaseConfig = {
+      databaseURL: "https://gymdaily-3fb9e-default-rtdb.firebaseio.com"
+    };
+    
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    
+    // DOM elements
+    const scoreboardContainer = document.getElementById("scoreboardContainer");
+    const sortBySelect = document.getElementById("sortBy");
+    const workoutFilterSelect = document.getElementById("workoutFilter");
+    const applyFiltersBtn = document.getElementById("applyFilters");
+    const backBtn = document.getElementById("backBtn");
+    const refreshBtn = document.getElementById("refreshBtn");
+    
+    // Global variables
+    let userData = [];
+    let workoutTypes = new Set(["all"]);
+    
+    // Function to fetch all users data
+    async function fetchUserData() {
+      try {
+        const usersRef = ref(db, 'users');
+        const snapshot = await get(usersRef);
+        
+        if (snapshot.exists()) {
+          userData = [];
+          workoutTypes = new Set(["all"]);
+          
+          // Process each user
+          snapshot.forEach((userSnapshot) => {
+            const username = userSnapshot.key;
+            const user = userSnapshot.val();
+            
+            // Extract streak information
+            const streak = user.streak?.streak || 0;
+            
+            // Extract workout history
+            let highestPR = 0;
+            let highestPRWorkout = "None";
+            
+            if (user.workoutHistory) {
+              user.workoutHistory.forEach(workout => {
+                // For workout types dropdown
+                if (workout.workoutType) {
+                  workoutTypes.add(workout.workoutType);
+                }
+                
+                // Find highest PR
+                const pr = parseFloat(workout.maxPR) || 0;
+                if (pr > highestPR) {
+                  highestPR = pr;
+                  highestPRWorkout = workout.workoutType || "Unknown";
+                }
+              });
+            }
+            
+            // Add user to array
+            userData.push({
+              username,
+              streak,
+              highestPR,
+              highestPRWorkout
+            });
+          });
+          
+          // Populate workout type filter
+          populateWorkoutFilter();
+          
+          // Display data
+          displayScoreboard();
+        } else {
+          scoreboardContainer.innerHTML = "<p class='no-data'>No user data found.</p>";
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        scoreboardContainer.innerHTML = "<p class='no-data'>Error loading scoreboard. Please try again later.</p>";
+      }
+    }
+    
+    // Function to populate workout filter dropdown
+    function populateWorkoutFilter() {
+      workoutFilterSelect.innerHTML = "";
+      
+      // Add "All Workouts" option
+      const allOption = document.createElement("option");
+      allOption.value = "all";
+      allOption.textContent = "All Workouts";
+      workoutFilterSelect.appendChild(allOption);
+      
+      // Add workout types
+      workoutTypes.forEach(type => {
+        if (type !== "all") {
+          const option = document.createElement("option");
+          option.value = type;
+          option.textContent = type;
+          workoutFilterSelect.appendChild(option);
+        }
+      });
+    }
+    
+    // Function to display the scoreboard
+    function displayScoreboard() {
+      // Apply current filters
+      const sortBy = sortBySelect.value;
+      const workoutFilter = workoutFilterSelect.value;
+      
+      // Filter users based on workout type
+      let filteredUsers = [...userData];
+      if (workoutFilter !== "all") {
+        filteredUsers = filteredUsers.filter(user => 
+          user.highestPRWorkout === workoutFilter
+        );
+      }
+      
+      // Sort users based on selected criteria
+      if (sortBy === "streak") {
+        filteredUsers.sort((a, b) => b.streak - a.streak);
+      } else if (sortBy === "pr") {
+        filteredUsers.sort((a, b) => b.highestPR - a.highestPR);
+      }
+      
+      // Create scoreboard HTML
+      let scoreboardHTML = `
+        <table class="scoreboard">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Username</th>
+              <th>Highest PR</th>
+              <th>Workout</th>
+              <th>Streak</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+      
+      if (filteredUsers.length === 0) {
+        scoreboardHTML += `
+          <tr>
+            <td colspan="5" class="no-data">No users match the selected filters.</td>
+          </tr>
+        `;
+      } else {
+        // Add users to scoreboard
+        filteredUsers.forEach((user, index) => {
+          const rankClass = index === 0 ? 'first' : (index === 1 ? 'second' : (index === 2 ? 'third' : ''));
+          
+          scoreboardHTML += `
+            <tr>
+              <td class="rank ${rankClass}">${index + 1}</td>
+              <td class="username">${user.username}</td>
+              <td class="pr">${user.highestPR} ${user.highestPR > 0 ? 'lbs' : ''}</td>
+              <td class="workout-type">${user.highestPRWorkout}</td>
+              <td class="streak">🔥 ${user.streak} day${user.streak === 1 ? '' : 's'}</td>
+            </tr>
+          `;
+        });
+      }
+      
+      scoreboardHTML += `
+          </tbody>
+        </table>
+      `;
+      
+      scoreboardContainer.innerHTML = scoreboardHTML;
+    }
+    
+    // Event listeners
+    document.addEventListener("DOMContentLoaded", () => {
+      // Initial data fetch
+      fetchUserData();
+      
+      // Filter button click
+      applyFiltersBtn.addEventListener("click", displayScoreboard);
+      
+      // Back button
+      backBtn.addEventListener("click", () => {
+        window.location.href = "dashboard.html";
+      });
+      
+      // Refresh button
+      refreshBtn.addEventListener("click", fetchUserData);
+    });
+  </script>
+</body>
+</html>
