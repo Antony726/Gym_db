@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard | FitFam</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #121212;
+      color: #f4f4f4;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .dashboard {
+      background: #1e1e1e;
+      padding: 2rem;
+      border-radius: 10px;
+      box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+      width: 90%;
+      max-width: 600px;
+      text-align: center;
+    }
+
+    h2 {
+      color: #4fff9e;
+      margin-bottom: 1rem;
+    }
+
+    p {
+      font-size: 1.2rem;
+      margin-bottom: 2rem;
+    }
+
+    .button-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      justify-content: center;
+      margin-bottom: 2rem;
+    }
+
+    .button-container button {
+      background-color: #18ff80;
+      color: #121212;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      width: 45%;
+    }
+
+    .button-container button:hover {
+      background-color: #ffca28;
+    }
+
+    #logoutBtn {
+      background-color: #e57373;
+      color: #fff;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    #logoutBtn:hover {
+      background-color: #d32f2f;
+    }
+
+    @media (max-width: 480px) {
+      .button-container button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <h2>🏋️ Welcome to Backstreet Boyz Dashboard</h2>
+    <p>You are logged in.</p>
+
+    <!-- Buttons to navigate to different sections -->
+    <div class="button-container">
+      <button onclick="window.location.href='workout_log.html'">Log Workout</button>
+      <button onclick="window.location.href='workout_history.html'">View Workout History</button>
+      <button onclick="window.location.href='daily_goals.html'">Streak's</button>
+      <button onclick="window.location.href='todays_workout.html'">Today's Workout</button>
+      <button onclick="window.location.href='workout_plan.html'">Add plans</button>
+      <button onclick="window.location.href='view_plan.html'">View Plans</button>
+    </div>
+
+    <!-- Logout button -->
+    <button id="logoutBtn">Logout</button>
+  </div>
+
+ 
+
+  <script>
+    document.getElementById("logoutBtn").addEventListener("click", function () {
+      localStorage.removeItem("user");  // Clear user data from localStorage
+      window.location.href = "login.html";  // Redirect to login page
+    });
+  </script>
+</body>
+</html>

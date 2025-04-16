@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gym Streak Tracker</title>
+  <!-- Firebase SDKs -->
+  
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #121212;
+      color: #f4f4f4;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .container {
+      background: #1e1e1e;
+      padding: 2rem;
+      border-radius: 10px;
+      width: 90%;
+      max-width: 600px;
+      text-align: center;
+      box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+    }
+
+    h2 {
+      color: #ffd54f;
+      margin-bottom: 1rem;
+    }
+
+    p {
+      font-size: 1.2rem;
+      margin-bottom: 1rem;
+    }
+
+    .button-container {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      margin-top: 2rem;
+    }
+
+    .button-container button {
+      background-color: #ffd54f;
+      color: #121212;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .button-container button:hover {
+      background-color: #ffca28;
+    }
+
+    .timer {
+      font-size: 2rem;
+      color: #ffd54f;
+      margin-top: 1rem;
+    }
+
+    .streak-info {
+      margin-top: 2rem;
+      font-size: 1.2rem;
+      color: #fff;
+    }
+
+    .gym-time {
+      margin-top: 2rem;
+      font-size: 1rem;
+      color: #f4f4f4;
+    }
+
+    .gym-log-table {
+      width: 100%;
+      margin-top: 2rem;
+      border-collapse: collapse;
+    }
+
+    .gym-log-table th, .gym-log-table td {
+      padding: 10px;
+      border: 1px solid #f4f4f4;
+      text-align: center;
+    }
+
+    .gym-log-table th {
+      background-color: #ffd54f;
+    }
+
+    .gym-log-table td {
+      background-color: #2c2c2c;
+    }
+
+    #logoutBtn {
+      background-color: #e57373;
+      color: #fff;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    #logoutBtn:hover {
+      background-color: #d32f2f;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>🏋️ Gym Streak Tracker</h2>
+    <p>Track your gym visits and maintain your streak!</p>
+
+    <!-- Streak Info -->
+    <div class="streak-info" id="streakInfo">Loading Streak...</div>
+
+    <!-- Timer -->
+    <div class="timer" id="timer">00:00</div>
+
+    <!-- Buttons to start/end gym session -->
+    <div class="button-container">
+      <button id="inGymBtn" onclick="startGymSession()">In Gym</button>
+      <button id="outGymBtn" onclick="endGymSession()" disabled>Out Gym</button>
+    </div>
+
+    <!-- Gym visit time log -->
+    <div class="gym-time" id="gymTimeLog">No gym time recorded yet.</div>
+
+    <!-- Gym visit history table -->
+    <table class="gym-log-table" id="gymLogTable">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Gym Time (minutes)</th>
+        </tr>
+      </thead>
+      <tbody id="gymLogBody">
+        <!-- History of gym visits will be dynamically added here -->
+      </tbody>
+    </table>
+
+    <!-- Logout button -->
+    <button id="logoutBtn">Logout</button>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, get, update, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+  
+    const firebaseConfig = {
+      databaseURL: "https://gymdaily-3fb9e-default-rtdb.firebaseio.com"
+    };
+  
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+  
+    // Get the logged-in user from localStorage
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (!user) {
+      alert("User not logged in");
+      return;  // Prevent further execution if no user is logged in
+    }
+  
+    const workoutDropdown = document.getElementById("workoutDropdown");
+    const streakInfo = document.getElementById("streakInfo"); // Element to display streak info
+    const inButton = document.getElementById("inButton");
+    const outButton = document.getElementById("outButton");
+  
+    let isGymSessionActive = false;
+  
+    // Load today's workouts and streak info
+    (async () => {
+      const today = new Date().toLocaleString('en-us', { weekday: 'long' }).toLowerCase();
+      const snapshot = await get(ref(db, 'users/' + user.username + '/workoutPlan/' + today));
+      if (snapshot.exists()) {
+        snapshot.val().workouts.forEach(workout => {
+          const option = document.createElement("option");
+          option.value = workout;
+          option.textContent = workout;
+          workoutDropdown.appendChild(option);
+        });
+      }
+  
+      // Load streak info from Firebase
+      const streakSnapshot = await get(ref(db, 'users/' + user.username + '/streak'));
+      if (streakSnapshot.exists()) {
+        const streakData = streakSnapshot.val();
+        streakInfo.textContent = `🔥 Current Streak: ${streakData.streak} day(s)`;
+      } else {
+        streakInfo.textContent = `🔥 Current Streak: 0 day(s)`;
+      }
+    })();
+  
+    // Log workout and update streak
+    document.getElementById("workoutLogForm").addEventListener("submit", async function (event) {
+      event.preventDefault();
+  
+      if (!isGymSessionActive) {
+        alert("Please mark 'In' to start your gym session.");
+        return;
+      }
+  
+      const loggedWorkout = {
+        workoutType: workoutDropdown.value,
+        reps: document.getElementById("reps").value,
+        sets: document.getElementById("sets").value,
+        maxPR: document.getElementById("maxPR").value,
+        date: new Date().toLocaleDateString(),
+        time: new Date().toLocaleTimeString() // Store time of workout
+      };
+  
+      const userRef = ref(db, 'users/' + user.username);
+      const snapshot = await get(userRef);
+      const data = snapshot.val();
+  
+      const workoutHistory = data.workoutHistory || [];
+      workoutHistory.push(loggedWorkout);
+  
+      // Update streak logic
+      const today = new Date().toLocaleDateString();
+      const lastWorkoutDate = data.lastWorkoutDate;
+      let streak = data.streak || 0;
+  
+      // Check if the workout is on the next day
+      if (lastWorkoutDate) {
+        const lastWorkoutDateObj = new Date(lastWorkoutDate);
+        const currentDateObj = new Date(today);
+        const diffDays = Math.floor((currentDateObj - lastWorkoutDateObj) / (1000 * 60 * 60 * 24));
+        
+        if (diffDays === 1) {
+          streak++;  // Increment streak if workout is on the next day
+        } else if (diffDays > 1) {
+          streak = 1;  // Reset streak if missed days (excluding rest days)
+        }
+      } else {
+        streak = 1;  // If no previous workout, start a new streak
+      }
+  
+      // Update user data with new streak and workout history
+      update(userRef, {
+        workoutHistory,
+        lastWorkoutDate: today,
+        streak
+      });
+  
+      // Update streak info in Firebase
+      const streakRef = ref(db, 'users/' + user.username + '/streak');
+      update(streakRef, { streak });
+  
+      alert("Workout logged and streak updated!");
+      document.getElementById("workoutLogForm").reset();
+  
+      // Update streak display on UI
+      streakInfo.textContent = `🔥 Current Streak: ${streak} day(s)`;
+    });
+  
+    // Define the startGymSession function
+    function startGymSession() {
+      isGymSessionActive = true;
+      alert("You are now marked as 'In' for the gym.");
+    }
+  
+    // Mark as "In" for gym session
+    inButton.addEventListener("click", startGymSession);
+  
+    // Mark as "Out" for gym session
+    outButton.addEventListener("click", async () => {
+      if (isGymSessionActive) {
+        isGymSessionActive = false;
+        alert("You are now marked as 'Out' of the gym.");
+  
+        // Save the gym session status to Firebase
+        const sessionRef = ref(db, 'users/' + user.username + '/gymSession');
+        await set(sessionRef, { status: "Out", timestamp: new Date().toLocaleString() });
+  
+        // Log the session end time in the table
+        const sessionEndTime = new Date().toLocaleTimeString();
+        document.getElementById("sessionEndTime").textContent = `Session ended at: ${sessionEndTime}`;
+      } else {
+        alert("You are already marked as 'Out'.");
+      }
+    });
+  </script>
+  
+  
+
+</body>
+</html>

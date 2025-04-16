@@ -1,0 +1,108 @@
+body {
+    font-family: Arial, sans-serif;
+    background: #121212;
+    color: #f4f4f4;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    
+  }
+  
+  .auth-container, .dashboard {
+    background: #1f1f1f;
+    padding: 2rem;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 400px; /* Make container larger */
+    text-align: center;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+  }
+  
+  input {
+    display: block;
+    margin: 1rem auto;
+    padding: 0.7rem;
+    width: 90%;
+    border: none;
+    border-radius: 8px;
+    outline: none;
+  }
+  
+  button {
+    padding: 0.7rem 1.5rem;
+    border: none;
+    background: #00ff90;
+    color: black;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+  }
+  
+  a {
+    color: #00ccff;
+    text-decoration: none;
+  }
+  
+  p {
+    margin-top: 10px;
+    font-size: 0.9rem;
+  }
+
+ 
+  
+  h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #ffffff;
+  }
+  
+  label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+    color: #ffffff;
+  }
+  
+  input[type="number"],
+  input[type="text"],
+  select {
+    width: 100%;
+    padding: 10px 12px;
+    margin-bottom: 18px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 16px;
+    box-sizing: border-box;
+    background-color: #fefefe;
+    transition: border 0.2s;
+  }
+  
+  input:focus,
+  select:focus {
+    border-color: #007bff;
+    outline: none;
+  }
+  
+  select {
+    appearance: none;
+    
+  }  
+  /* Responsive Design for Mobile */
+  @media (max-width: 600px) {
+    body {
+      padding: 10px;
+    }
+  
+    .auth-container, .dashboard {
+      width: 100%;
+      max-width: 100%;  /* Allow the container to fit smaller screens */
+      padding: 1.5rem;
+    }
+  
+    input, button {
+      font-size: 1rem;  /* Increase input and button font size for mobile users */
+    }
+  }
+  

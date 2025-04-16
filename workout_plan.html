@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Workout Plan | FitFam</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<style>
+    
+</style>
+<body>
+  <div class="auth-container" style="margin-top: 500px;">
+    <h2>🏋 Create Your Weekly Workout Plan</h2>
+    
+    <form id="workoutPlanForm">
+
+      <!-- Repeatable block for each day -->
+      <div class="day-container" >
+        <h3>Monday</h3>
+        <label for="mondayTitle">Title:</label>
+        <input type="text" id="mondayTitle" placeholder="Enter workout title" required />
+        <label for="mondayWorkouts">Workouts (separate with commas):</label>
+        <input type="text" id="mondayWorkouts" placeholder="e.g. Bicep Curl, Pull-ups" required />
+      </div>
+
+      <div class="day-container">
+        <h3>Tuesday</h3>
+        <label for="tuesdayTitle">Title:</label>
+        <input type="text" id="tuesdayTitle" placeholder="Enter workout title" required />
+        <label for="tuesdayWorkouts">Workouts (separate with commas):</label>
+        <input type="text" id="tuesdayWorkouts" placeholder="e.g. Squats, Lunges" required />
+      </div>
+
+      <div class="day-container">
+        <h3>Wednesday</h3>
+        <label for="wednesdayTitle">Title:</label>
+        <input type="text" id="wednesdayTitle" placeholder="Enter workout title" required />
+        <label for="wednesdayWorkouts">Workouts (separate with commas):</label>
+        <input type="text" id="wednesdayWorkouts" placeholder="e.g. Pushups, Tricep Dips" required />
+      </div>
+
+      <div class="day-container">
+        <h3>Thursday</h3>
+        <label for="thursdayTitle">Title:</label>
+        <input type="text" id="thursdayTitle" placeholder="Enter workout title" required />
+        <label for="thursdayWorkouts">Workouts (separate with commas):</label>
+        <input type="text" id="thursdayWorkouts" placeholder="e.g. Leg Press, Calf Raise" required />
+      </div>
+
+      <div class="day-container">
+        <h3>Friday</h3>
+        <label for="fridayTitle">Title:</label>
+        <input type="text" id="fridayTitle" placeholder="Enter workout title" required />
+        <label for="fridayWorkouts">Workouts (separate with commas):</label>
+        <input type="text" id="fridayWorkouts" placeholder="e.g. Deadlift, Barbell Row" required />
+      </div>
+
+      <div class="day-container">
+        <h3>Saturday</h3>
+        <label for="saturdayTitle">Title:</label>
+        <input type="text" id="saturdayTitle" placeholder="Enter workout title" required />
+        <label for="saturdayWorkouts">Workouts (separate with commas):</label>
+        <input type="text" id="saturdayWorkouts" placeholder="e.g. Planks, Sit-ups" required />
+      </div>
+
+      <div class="day-container">
+        <h3>Sunday</h3>
+        <label for="sundayTitle">Title:</label>
+        <input type="text" id="sundayTitle" placeholder="Enter workout title" required />
+        <label for="sundayWorkouts">Workouts (separate with commas):</label>
+        <input type="text" id="sundayWorkouts" placeholder="e.g. Yoga, Stretching" required />
+      </div>
+
+      <button type="submit">Save Workout Plan</button>
+    </form>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+  
+    const firebaseConfig = {
+      databaseURL: "https://gymdaily-3fb9e-default-rtdb.firebaseio.com"
+    };
+  
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+  
+    document.getElementById("workoutPlanForm").addEventListener("submit", function (event) {
+      event.preventDefault();
+      const user = JSON.parse(localStorage.getItem("user"));
+      if (!user) return alert("Not logged in!");
+  
+      const weeklyPlan = {
+        monday: {
+          title: mondayTitle.value,
+          workouts: mondayWorkouts.value.split(",").map(w => w.trim())
+        },
+        tuesday: {
+          title: tuesdayTitle.value,
+          workouts: tuesdayWorkouts.value.split(",").map(w => w.trim())
+        },
+        wednesday: {
+          title: wednesdayTitle.value,
+          workouts: wednesdayWorkouts.value.split(",").map(w => w.trim())
+        },
+        thursday: {
+          title: thursdayTitle.value,
+          workouts: thursdayWorkouts.value.split(",").map(w => w.trim())
+        },
+        friday: {
+          title: fridayTitle.value,
+          workouts: fridayWorkouts.value.split(",").map(w => w.trim())
+        },
+        saturday: {
+          title: saturdayTitle.value,
+          workouts: saturdayWorkouts.value.split(",").map(w => w.trim())
+        },
+        sunday: {
+          title: sundayTitle.value,
+          workouts: sundayWorkouts.value.split(",").map(w => w.trim())
+        }
+      };
+  
+      update(ref(db, 'users/' + user.username), {
+        workoutPlan: weeklyPlan
+      });
+  
+      alert("Plan saved to Firebase!");
+      document.getElementById("workoutPlanForm").reset();
+    });
+  </script>
+  
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Workout Log | FitFam</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="auth-container">
+    <h2>🏋 Log Today's Workout</h2>
+
+    <!-- Workout Log Form -->
+    <form id="workoutLogForm">
+      <label for="workoutDropdown">Select Today's Workout:</label>
+      <select id="workoutDropdown" required>
+        <option value="">Select Workout</option>
+        <!-- Options will populate from localStorage -->
+      </select>
+
+      <label for="reps">Reps:</label>
+      <input type="number" id="reps" placeholder="Enter reps" required />
+
+      <label for="sets">Sets:</label>
+      <input type="number" id="sets" placeholder="Enter sets" required />
+
+      <label for="maxPR">Max PR:</label>
+      <input type="number" id="maxPR" placeholder="Enter max PR" required />
+
+      <button type="submit">Log Workout</button>
+    </form>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, get, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+  
+    const firebaseConfig = {
+      databaseURL: "https://gymdaily-3fb9e-default-rtdb.firebaseio.com"
+    };
+  
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+  
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (!user) alert("User not logged in");
+  
+    const workoutDropdown = document.getElementById("workoutDropdown");
+  
+    // Load today's workouts
+    (async () => {
+      const today = new Date().toLocaleString('en-us', { weekday: 'long' }).toLowerCase();
+      const snapshot = await get(ref(db, 'users/' + user.username + '/workoutPlan/' + today));
+      if (snapshot.exists()) {
+        snapshot.val().workouts.forEach(workout => {
+          const option = document.createElement("option");
+          option.value = workout;
+          option.textContent = workout;
+          workoutDropdown.appendChild(option);
+        });
+      }
+    })();
+  
+    // Log workout
+    document.getElementById("workoutLogForm").addEventListener("submit", async function (event) {
+      event.preventDefault();
+  
+      const loggedWorkout = {
+        workoutType: workoutDropdown.value,
+        reps: document.getElementById("reps").value,
+        sets: document.getElementById("sets").value,
+        maxPR: document.getElementById("maxPR").value,
+        date: new Date().toLocaleDateString()
+      };
+  
+      const userRef = ref(db, 'users/' + user.username);
+      const snapshot = await get(userRef);
+      const data = snapshot.val();
+  
+      const workoutHistory = data.workoutHistory || [];
+      workoutHistory.push(loggedWorkout);
+  
+      update(userRef, { workoutHistory });
+  
+      alert("Workout logged to Firebase!");
+      document.getElementById("workoutLogForm").reset();
+    });
+  </script>
+  
+  
+</body>
+</html>
